@@ -34,9 +34,8 @@ class Api (context: Context) {
         val lastWords: StateFlow<String> = voskSpeechRecognizer.lastWords.asStateFlow()
         val lastWordsResult: StateFlow<SentenceResult?> =
             voskSpeechRecognizer.lastWordsResult.asStateFlow()
-        val finalResultWords: StateFlow<String> =
-            voskSpeechRecognizer.finalResultWords.asStateFlow()
-        val finalResult: StateFlow<SentenceResult?> = voskSpeechRecognizer.finalResult.asStateFlow()
+        val partialWords: StateFlow<String> =
+            voskSpeechRecognizer.partialResult.asStateFlow()
         val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()
 
         fun init(onReady: (Recognizer) -> Unit, onError: (Exception) -> Unit) {
@@ -45,6 +44,7 @@ class Api (context: Context) {
                 onVoskReady = {
                     onReady.invoke(this)
                     sttInitialized = true
+
                 },
                 onInitError = { e: Exception ->
                     e.printStackTrace()
@@ -112,5 +112,10 @@ class Api (context: Context) {
         var word: String = ""
     }
 
+    class PartialResult {
+        @SerializedName("partial")
+        var partial = ""
 
+
+    }
 }

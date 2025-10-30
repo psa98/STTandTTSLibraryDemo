@@ -37,11 +37,11 @@
 
     <EditText
         android:layout_margin="24dp"
-        android:id="@+id/finalText"
+        android:id="@+id/partialText"
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:inputType="none"
-        android:text="Итоговый распознанный текст"
+        android:text="Слова по мере распознавания"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -66,7 +66,7 @@
         android:layout_gravity="center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Начать распознавание"
+        android:text="Подготовка оборудования"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

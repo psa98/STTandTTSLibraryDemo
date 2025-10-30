@@ -6,7 +6,7 @@ import android.content.SharedPreferences
 import androidx.core.content.edit
 
 @Suppress("unused")
-class SettingsRepository(val context: Application) {
+class SettingsRepository(context: Application) {
 
 
     fun containsKey(key: String?): Boolean {

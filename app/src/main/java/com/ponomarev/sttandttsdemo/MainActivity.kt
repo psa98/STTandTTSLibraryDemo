@@ -19,6 +19,7 @@ import kotlinx.coroutines.launch
 
 const val PERMISSION_REQUEST_CODE = 42
 private const val TAG = "Main activity"
+
 class MainActivity : AppCompatActivity() {
     val sttApi: Api by lazy { Api(this) }
     var recognizerApi: Api.Recognizer? = null
@@ -41,22 +42,24 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         binding.permissionsButton.setOnClickListener {
             Log.e(TAG, "setupListeners: =")
-            requestPermissions(arrayOf(RECORD_AUDIO),
+            requestPermissions(
+                arrayOf(RECORD_AUDIO),
                 PERMISSION_REQUEST_CODE
             )
         }
         binding.recordButton.setOnClickListener {
             val rec = recognizerApi
             if (rec == null) return@setOnClickListener
-            if (rec.sttReadyToStart == true) {
-                rec.startMic()
-                binding.recordButton.text="Остановить запись"
-            }
-
             if (rec.apiState.value == WORKING_MIC) {
                 rec.stopMic()
-                binding.recordButton.text="Начать распознаваниеь"
+                binding.recordButton.text = "Начать распознавание"
+                return@setOnClickListener
             }
+            if (rec.sttReadyToStart == true) {
+                rec.startMic()
+                binding.recordButton.text = "Остановить запись"
+            }
+
         }
 
     }
@@ -69,8 +72,8 @@ class MainActivity : AppCompatActivity() {
             binding.recordButton.text = "Разрешение для микрофона не получено"
             binding.recordButton.isEnabled = false
         } else {
-            binding.recordButton.text = "Начать распознавание"
-            binding.recordButton.isEnabled = true
+            binding.recordButton.text = "Подготовка оборудования"
+            binding.recordButton.isEnabled = false
             binding.permissionsButton.text = "Разрешение на доступ к микрофону предоставлено"
             binding.permissionsButton.isEnabled = false
         }
@@ -109,19 +112,30 @@ class MainActivity : AppCompatActivity() {
             onReady = { recognizer ->
                 recognizerApi = recognizer
                 binding.recordButton.isEnabled = true
+                binding.recordButton.text = "Начать распознавание"
                 scope.launch {
-                    recognizer.apiState.collect {
-                        binding.textState.text = it.toString()
+                    recognizer.partialWords.collect {
+                        binding.partialText.setText(it.toString())
                     }
-                    recognizer.finalResultWords.collect {
-                        binding.finalText.setText(it.toString())
-                    }
+                }
+                scope.launch {
                     recognizer.lastWords.collect {
                         binding.currentText.setText(it.toString())
                     }
                 }
+                scope.launch {
+                    recognizer.apiState.collect {
+                        binding.textState.text = it.toString()
+                    }
+                }
+
+
             },
-            onError = { binding.recordButton.text = "Не удалось инициализировать API" }
+            onError = {
+                binding.recordButton.text = "Не удалось инициализировать API"
+                binding.recordButton.isEnabled = false
+
+            }
         )
 
     }

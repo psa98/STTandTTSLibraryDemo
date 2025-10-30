@@ -17,31 +17,28 @@ import java.io.IOException
 
 internal object VoskSpeechRecognizer : RecognitionListener {
     var rec: Recognizer? = null
-    private var settings: SettingsRepository? = null
+    var settings: SettingsRepository? = null
     private var currentModel: Model? = null
-    var processor: VoiceProcessor? = null
     private var speechService: SpeechService? = null
-    private var currentString: String = ""
-    var modelDirectory = ""
     var state = ApiState.CREATED_NOT_READY
-        private set
+        set(value) {
+            field = value
+            apiState.value = value
+        }
     private val gson = Gson()
-    var callOnInitError = {}
+    var callOnInitError: (Exception) -> Unit = {}
     internal val lastWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val lastWordsResult: MutableStateFlow<SentenceResult?> = MutableStateFlow(null)
-    internal val finalResultWords: MutableStateFlow<String> = MutableStateFlow("")
-    internal val finalResult: MutableStateFlow<SentenceResult?> = MutableStateFlow(null)
+    internal val partialResult: MutableStateFlow<String> = MutableStateFlow("")
     internal val apiState: MutableStateFlow<ApiState> = MutableStateFlow(ApiState.CREATED_NOT_READY)
-
 
 
     fun prepare(
         appContext: Context,
-        onVoskReady: ()-> Unit,
-        onInitError: (e:Exception) -> Unit,
+        onVoskReady: () -> Unit,
+        onInitError: (e: Exception) -> Unit,
     ) {
         settings = SettingsRepository(appContext.applicationContext as Application)
-        currentString = ""
         LibVosk.setLogLevel(LogLevel.WARNINGS)
         StorageService.unpack(
             appContext, "model-ru-ru", "model",
@@ -63,70 +60,69 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         val sentenceResult = gson.fromJson(hypothesis, SentenceResult::class.java)
         val newWordsString = sentenceResult.text
         if (newWordsString.trim().isEmpty()) return
-        val currentString = lastWords.value.toString()+newWordsString
-        lastWords.value = currentString
+        lastWords.value = newWordsString
         lastWordsResult.value = sentenceResult
     }
 
     override fun onFinalResult(hypothesis: String?) {
         state = ApiState.FINISHED_AND_READY
         if (hypothesis == null || hypothesis.trim().isEmpty()) {
-            finalResultWords.value = ""
-            finalResult.value = null
+            lastWords.value = ""
+            lastWordsResult.value = null
             return
         }
         val sentenceResult = gson.fromJson(hypothesis, SentenceResult::class.java)
         val newWordsString = sentenceResult.text
         if (newWordsString.trim().isEmpty()) {
-            finalResultWords.value = ""
-            finalResult.value = null
+            lastWords.value = ""
+            lastWordsResult.value = null
             return
         }
-        finalResultWords.value = newWordsString
-        finalResult.value = sentenceResult
+        lastWords.value = newWordsString
     }
 
-    private fun processInput(previousString: String, response: String): String {
-        // тут возможна иная обработка новых полученных слов, к примеру детекция ключевых слов
-        // или анализ всей предшествующей строки
-        val nextString = response.trim()
-        processor?.processWords(response, previousString)
-        return "$nextString \n$previousString"
+
+    override fun onPartialResult(hypothesis: String) {
+        val result = gson.fromJson(hypothesis, Api.PartialResult::class.java).partial
+        if (result.isEmpty()) return
+        partialResult.value = result
     }
 
-    override fun onPartialResult(hypothesis: String) {}
     override fun onError(e: Exception) {
-        callOnInitError()
+        callOnInitError(e)
         stop()
         release()
     }
 
     override fun onTimeout() {
-        //showToast("Error, other application use microphone now");
-        callOnInitError()
+        callOnInitError(IOException("Не удалось получить доступ к микрофону, таймаут"))
         stop()
         release()
     }
 
     @Throws(IOException::class)
     fun recognizeMic(onInitError: (Exception) -> Unit = {}) {
+
         if ((state == ApiState.INITIALISED_READY || state == ApiState.FINISHED_AND_READY) && currentModel != null) {
             try {
+                callOnInitError = onInitError
                 val sampleRate = settings?.voskMicSampleRate ?: 16000f
                 rec = Recognizer(currentModel, sampleRate)
                 speechService = SpeechService(rec, sampleRate)
                 speechService?.startListening(this)
-                currentString = ""
-                finalResultWords.value = ""
-                finalResult.value = null
+                partialResult.value = ""
                 lastWords.value = ""
                 lastWordsResult.value = null
                 state = ApiState.WORKING_MIC
             } catch (e: Exception) {
                 onInitError(e)
             }
-        } else onInitError(IllegalStateException("Ошибка: api должно быть в состоянии INITIALISED_READY или" +
-                " FINISHED_AND_READY. Библиотека не инициалиирована или ее ресурсы уже освобождены") )
+        } else onInitError(
+            IllegalStateException(
+                "Ошибка: api должно быть в состоянии INITIALISED_READY или" +
+                        " FINISHED_AND_READY. Библиотека не инициалиирована или ее ресурсы уже освобождены"
+            )
+        )
     }
 
     fun pause(on: Boolean) {
@@ -153,7 +149,4 @@ internal object VoskSpeechRecognizer : RecognitionListener {
     }
 
 
-    interface VoiceProcessor {
-        fun processWords(newWords: String, currentString: String)
-    }
 }
