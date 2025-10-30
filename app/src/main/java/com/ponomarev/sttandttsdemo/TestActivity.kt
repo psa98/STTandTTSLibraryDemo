@@ -231,6 +231,7 @@ class TestActivity() : ComponentActivity() {
         super.onDestroy()
         recognizerApi?.stopMic()
         recognizerApi?.releaseModels()
+        speakApi.release()
     }
 
     override fun onPause() {

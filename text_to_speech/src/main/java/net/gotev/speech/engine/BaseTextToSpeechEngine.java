@@ -47,12 +47,10 @@ public class BaseTextToSpeechEngine implements TextToSpeechEngine {
         mTextToSpeech.setPitch(mTtsPitch);
         mTextToSpeech.setSpeechRate(mTtsRate);
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            if (voice == null) {
-                voice = mTextToSpeech.getDefaultVoice();
-            }
-            mTextToSpeech.setVoice(voice);
+        if (voice == null) {
+            voice = mTextToSpeech.getDefaultVoice();
         }
+        mTextToSpeech.setVoice(voice);
     }
 
     @Override

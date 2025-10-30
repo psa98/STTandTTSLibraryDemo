@@ -36,4 +36,13 @@ class SettingsRepository(val context: Application) {
         return sharedPreferences.getString("VOICE", "") ?: ""
     }
 
+    fun setSpeed(speed: Float) {
+        sharedPreferences.edit { putFloat("SPEED", speed) }
+    }
+
+    fun getSpeed(): Float {
+        return sharedPreferences.getFloat("SPEED", 1.0f)
+    }
+
+
 }
