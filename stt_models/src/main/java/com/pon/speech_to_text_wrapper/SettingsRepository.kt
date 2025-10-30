@@ -1,11 +1,12 @@
 package com.pon.speech_to_text_wrapper
 
+import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
 
 @Suppress("unused")
-class SettingsRepository(val context: Context) {
+class SettingsRepository(val context: Application) {
 
 
     fun containsKey(key: String?): Boolean {

@@ -17,7 +17,7 @@ object Speaker {
 
     private val speaker: Speech by lazy { Speech.getInstance() }
     var speakerAvailable = false
-    val settings : SettingsRepository = null
+    val settings : SettingsRepository? = null
     private var readyCallback: (result: Boolean) -> Unit = {}
     fun voiceList(): List<Voice> = try {speaker.supportedTextToSpeechVoices  }
             catch (e: Exception) {emptyList()}
@@ -59,11 +59,12 @@ object Speaker {
             when (status) {
                 TextToSpeech.SUCCESS -> {
                     try {
+                        @Suppress("DEPRECATION")
                         speaker.setLocale(Locale("ru", "RU"))
                         Log.i(TAG, "TextToSpeech engine successfully started")
                         val currentVoice = speaker
                             .supportedTextToSpeechVoices
-                            ?.find { it.name == PrefsRepository.getSavedVoice() }
+                            ?.find { it.name == settings?.getSavedVoice() }
                         currentVoice?.let { speaker.setVoice(it) }
 
                     } catch (e: Exception) {
@@ -97,7 +98,7 @@ object Speaker {
     }
 
     fun setVoice(voice: Voice) {
-        saveDefaultVoice(voice.name)
+        settings?.saveDefaultVoice(voice.name)
         if (speakerAvailable) speaker.setVoice(voice)
     }
 

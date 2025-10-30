@@ -4,7 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-import android.provider.Settings.Global.putFloat
+
 
 
 @Suppress("unused")

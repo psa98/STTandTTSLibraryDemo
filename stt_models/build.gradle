@@ -4,12 +4,15 @@ plugins {
 }
 
 
-    android {
+android {
 
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_17
-        targetCompatibility JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
     }
     compileSdkVersion 36
     defaultConfig {
@@ -34,7 +37,7 @@ dependencies {
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.1'
     implementation 'com.google.code.gson:gson:2.11.0'
     implementation 'net.java.dev.jna:jna:5.8.0@aar'
-    implementation  "androidx.lifecycle:lifecycle-livedata-core:2.9.4"
+    implementation "androidx.lifecycle:lifecycle-livedata-core:2.9.4"
     implementation group: 'com.alphacephei', name: 'vosk-android', version: '0.3.23'
     implementation 'com.alphacephei:vosk-android:0.3.47@aar'
     implementation project(path: ':text_to_speech')
@@ -42,15 +45,9 @@ dependencies {
 
 }
 
-    tasks.register('genUUID') {
+tasks.register('genUUID') {
 
-    def uuid = UUID.randomUUID().toString()
-    def odir = file("$buildDir/generated/assets/model-en-us")
-    def ofile = file("$odir/uuid")
-    doLast {
-        mkdir odir
-        ofile.text = uuid
-    }
+
     def uuid2 = UUID.randomUUID().toString()
     def odir2 = file("$buildDir/generated/assets/model-ru-ru")
     def ofile2 = file("$odir2/uuid")
