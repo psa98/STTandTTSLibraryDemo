@@ -32,8 +32,8 @@ class Api (context: Context) {
         var sttInitialized = false
         private val voskSpeechRecognizer: VoskSpeechRecognizer = VoskSpeechRecognizer
         val lastWords: StateFlow<String> = voskSpeechRecognizer.lastWords.asStateFlow()
-        val lastWordsResult: StateFlow<SentenceResult?> =
-            voskSpeechRecognizer.lastWordsResult.asStateFlow()
+        val allWords: StateFlow<String> =
+            voskSpeechRecognizer.allWords.asStateFlow()
         val partialWords: StateFlow<String> =
             voskSpeechRecognizer.partialResult.asStateFlow()
         val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()

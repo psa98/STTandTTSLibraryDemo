@@ -25,10 +25,11 @@
 
     <EditText
         android:layout_margin="24dp"
+        android:textSize="12sp"
         android:id="@+id/currentText"
         android:layout_width="match_parent"
         android:layout_height="80dp"
-        android:text="Распознанные слова"
+        android:text="Слова по мере распознавания"
         android:inputType="none"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -38,10 +39,11 @@
     <EditText
         android:layout_margin="24dp"
         android:id="@+id/partialText"
+        android:textSize="12sp"
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:inputType="none"
-        android:text="Слова по мере распознавания"
+        android:text="Все распознанные слова"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -74,6 +76,7 @@
 
     <EditText
         android:layout_marginStart="24dp"
+        android:textSize="12sp"
         android:id="@+id/text_to_speak"
         android:layout_width="match_parent"
         android:layout_height="60dp"

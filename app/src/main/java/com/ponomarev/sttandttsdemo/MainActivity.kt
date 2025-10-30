@@ -3,7 +3,6 @@ package com.ponomarev.sttandttsdemo
 import android.Manifest.permission.RECORD_AUDIO
 import android.content.pm.PackageManager
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
@@ -37,11 +36,46 @@ class MainActivity : AppCompatActivity() {
         }
         setupViews()
         setupListeners()
+        startSTTApi()
     }
+
+    private fun startSTTApi() {
+        sttApi.initApi(
+            onReady = { recognizer ->
+                recognizerApi = recognizer
+                binding.recordButton.isEnabled = true
+                binding.recordButton.text = "Начать распознавание"
+                scope.launch {
+                    recognizer.allWords.collect {
+                        binding.partialText.setText(it.toString())
+                    }
+                }
+                scope.launch {
+                    recognizer.lastWords.collect {
+                        binding.currentText.setText(it.toString())
+                    }
+                }
+                scope.launch {
+                    recognizer.apiState.collect {
+                        binding.textState.text = it.toString()
+                    }
+                }
+
+
+            },
+            onError = {
+                binding.recordButton.text = "Не удалось инициализировать API"
+                binding.recordButton.isEnabled = false
+
+            }
+        )
+
+    }
+
+
 
     private fun setupListeners() {
         binding.permissionsButton.setOnClickListener {
-            Log.e(TAG, "setupListeners: =")
             requestPermissions(
                 arrayOf(RECORD_AUDIO),
                 PERMISSION_REQUEST_CODE
@@ -63,6 +97,22 @@ class MainActivity : AppCompatActivity() {
         }
 
     }
+
+    override fun onStop() {
+        super.onStop()
+        if (recognizerApi!=null) {
+            binding.recordButton.text = "Начать распознавание"
+
+        }
+        recognizerApi?.stopMic()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        recognizerApi?.stopMic()
+        recognizerApi?.releaseModels()
+    }
+
 
     private fun setupViews() {
         binding.recordButton.isEnabled = hasPermissions()
@@ -107,36 +157,23 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        setupViews()
-        sttApi.initApi(
-            onReady = { recognizer ->
-                recognizerApi = recognizer
-                binding.recordButton.isEnabled = true
-                binding.recordButton.text = "Начать распознавание"
-                scope.launch {
-                    recognizer.partialWords.collect {
-                        binding.partialText.setText(it.toString())
-                    }
-                }
-                scope.launch {
-                    recognizer.lastWords.collect {
-                        binding.currentText.setText(it.toString())
-                    }
-                }
-                scope.launch {
-                    recognizer.apiState.collect {
-                        binding.textState.text = it.toString()
-                    }
-                }
+        if (!hasPermissions()) {
+            binding.permissionsButton.text = "Нажмите для получения разрешения"
+            binding.permissionsButton.isEnabled = true
+            binding.recordButton.text = "Разрешение для микрофона не получено"
+            binding.recordButton.isEnabled = false
+            return
+        }
+        val rec = recognizerApi
+        if (rec == null) return
+        if (rec.sttReadyToStart){
+            binding.recordButton.isEnabled = true
+            binding.recordButton.text = "Начать pаспознавание"
+        } else {
+            binding.recordButton.isEnabled = false
+            binding.recordButton.text = "Оборудование не готово"
+        }
 
-
-            },
-            onError = {
-                binding.recordButton.text = "Не удалось инициализировать API"
-                binding.recordButton.isEnabled = false
-
-            }
-        )
 
     }
 

@@ -15,6 +15,8 @@ import org.vosk.android.SpeechService
 import org.vosk.android.StorageService
 import java.io.IOException
 
+private const val MAX_WORDS_STORED = 1000
+
 internal object VoskSpeechRecognizer : RecognitionListener {
     var rec: Recognizer? = null
     var settings: SettingsRepository? = null
@@ -27,11 +29,19 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         }
     private val gson = Gson()
     var callOnInitError: (Exception) -> Unit = {}
+
+    internal val allWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val lastWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val lastWordsResult: MutableStateFlow<SentenceResult?> = MutableStateFlow(null)
     internal val partialResult: MutableStateFlow<String> = MutableStateFlow("")
     internal val apiState: MutableStateFlow<ApiState> = MutableStateFlow(ApiState.CREATED_NOT_READY)
-
+    var seanceString = ""
+        set(value) {
+            val shortenedString =
+                value.split(" ").toList().takeLast(MAX_WORDS_STORED).joinToString(" ")
+             field = shortenedString
+            allWords.value = shortenedString
+        }
 
     fun prepare(
         appContext: Context,
@@ -61,6 +71,7 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         val newWordsString = sentenceResult.text
         if (newWordsString.trim().isEmpty()) return
         lastWords.value = newWordsString
+        seanceString = "$seanceString $newWordsString"
         lastWordsResult.value = sentenceResult
     }
 
@@ -75,10 +86,11 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         val newWordsString = sentenceResult.text
         if (newWordsString.trim().isEmpty()) {
             lastWords.value = ""
-            lastWordsResult.value = null
+            lastWordsResult.value = sentenceResult
             return
         }
         lastWords.value = newWordsString
+        lastWordsResult.value = sentenceResult
     }
 
 
