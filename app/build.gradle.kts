@@ -1,11 +1,13 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
     namespace = "com.ponomarev.sttandttsdemo"
     compileSdk = 36
+
 
     defaultConfig {
         applicationId = "com.ponomarev.sttandttsdemo"
@@ -36,12 +38,17 @@ android {
 
     buildFeatures {
         viewBinding = true
+        compose = true
     }
 }
 
 dependencies {
-
+    implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.foundation)
+    implementation (libs.androidx.material3)
+    implementation (libs.androidx.material)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)

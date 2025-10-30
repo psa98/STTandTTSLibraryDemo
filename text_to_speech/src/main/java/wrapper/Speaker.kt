@@ -4,29 +4,41 @@ import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
 import android.util.Log
-
 import net.gotev.speech.Speech
 import net.gotev.speech.TextToSpeechCallback
 import wrapper.SettingsRepository
-import java.util.*
+import java.util.Locale
 
 
 private const val TAG = "Android TTS"
+
+/**
+
+Объект Speaker предоставляет функционал для озвучивания текста с помощью TextToSpeech.
+Управляет инициализацией, выбором голоса, воспроизведением фраз и освобождением ресурсов.
+
+*/
 object Speaker {
 
-
     private val speaker: Speech by lazy { Speech.getInstance() }
-    var speakerAvailable = false
-    val settings : SettingsRepository? = null
+
+    private var speakerAvailable = false
+    val settings: SettingsRepository? = null
     private var readyCallback: (result: Boolean) -> Unit = {}
-    fun voiceList(): List<Voice> = try {speaker.supportedTextToSpeechVoices  }
-            catch (e: Exception) {emptyList()}
+
+    fun isAvailable(): Boolean =  speakerAvailable
+
+    fun getVoiceList(): List<Voice> = try {
+        speaker.supportedTextToSpeechVoices
+    } catch (_: Exception) {
+        emptyList()
+    }
 
     fun currentVoice(): Voice? =
         if (speakerAvailable) speaker.textToSpeechVoice
         else null
 
-    fun prepare(context:Context, onReadyCallback: (result: Boolean) -> Unit = {}) {
+    fun prepare(context: Context, onReadyCallback: (result: Boolean) -> Unit = {}) {
         if (!speakerAvailable) {
             Speech.init(context, ttsInitListener)
             readyCallback = onReadyCallback
@@ -37,8 +49,13 @@ object Speaker {
         if (speakerAvailable) speaker.say(phrase)
     }
 
-    fun speakPhrase(phrase: String, callbackOnStart:()->Unit,callbackOnEnd:()->Unit,callbackOnError:()->Unit) {
-        val callback:TextToSpeechCallback = object:TextToSpeechCallback{
+    fun speakPhrase(
+        phrase: String,
+        callbackOnStart: () -> Unit,
+        callbackOnEnd: () -> Unit,
+        callbackOnError: () -> Unit
+    ) {
+        val callback: TextToSpeechCallback = object : TextToSpeechCallback {
             override fun onStart() {
                 callbackOnStart.invoke()
             }
@@ -48,10 +65,11 @@ object Speaker {
             }
 
             override fun onError() {
-                callbackOnError.invoke()}
+                callbackOnError.invoke()
+            }
 
         }
-        if (speakerAvailable) speaker.say(phrase,callback)
+        if (speakerAvailable) speaker.say(phrase, callback)
     }
 
     private val ttsInitListener =
@@ -73,10 +91,12 @@ object Speaker {
                     speakerAvailable = true
                     readyCallback(true)
                 }
+
                 TextToSpeech.ERROR -> {
                     Log.e(TAG, "Error while initializing TextToSpeech engine!")
                     readyCallback(false)
                 }
+
                 else -> {
                     Log.e(TAG, "Error while initializing TextToSpeech engine!")
                     readyCallback(false)
@@ -90,7 +110,7 @@ object Speaker {
     }
 
     fun Voice.getLangName(): String {
-        return locale.displayName + "\n" + name
+        return this.locale.displayName + "\n" + name
     }
 
     fun Voice.compareTo(v2: Voice): Int {

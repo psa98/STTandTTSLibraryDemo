@@ -6,29 +6,27 @@ import com.pon.speech_to_text_wrapper.VoskSpeechRecognizer.state
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-class Api (context: Context) {
+class Api () {
 
-    private val appContext: Context = context.applicationContext
-    private var recognizer: Recognizer? = null
 
+    private var recognizer: Recognizer = Recognizer
     fun initApi(
+        context: Context,
         onReady: (recognizer: Recognizer) -> Unit,
         onError: (e: Exception) -> Unit
     ) {
-
         var api = recognizer
-        if (api != null && recognizer?.sttInitialized==true) api else {
-            recognizer = Recognizer(appContext)
-            recognizer?.init(onReady, onError)
+        if (recognizer.sttInitialized==true) api else {
+            recognizer.init(context.applicationContext,onReady, onError)
         }
 
     }
 
     enum class ApiState {
-        CREATED_NOT_READY, INITIALISED_READY, WORKING_MIC, FINISHED_AND_READY, FAILURE
+        CREATED_NOT_READY, INITIALISED_READY, WORKING_MIC, FINISHED_AND_READY
     }
 
-    class Recognizer internal constructor(val context: Context) {
+    object Recognizer {
         var sttInitialized = false
         private val voskSpeechRecognizer: VoskSpeechRecognizer = VoskSpeechRecognizer
         val lastWords: StateFlow<String> = voskSpeechRecognizer.lastWords.asStateFlow()
@@ -38,7 +36,7 @@ class Api (context: Context) {
             voskSpeechRecognizer.partialResult.asStateFlow()
         val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()
 
-        fun init(onReady: (Recognizer) -> Unit, onError: (Exception) -> Unit) {
+        internal fun init(context: Context, onReady: (Recognizer) -> Unit, onError: (Exception) -> Unit) {
             voskSpeechRecognizer.prepare(
                 appContext = context,
                 onVoskReady = {
@@ -55,18 +53,22 @@ class Api (context: Context) {
         }
 
         fun startMic(onError: (Exception) -> Unit = {}) {
+            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
             voskSpeechRecognizer.recognizeMic(onError)
         }
 
         fun stopMic() {
+            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
             voskSpeechRecognizer.stop()
         }
 
         fun pauseMic() {
+            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
             voskSpeechRecognizer.pause(true)
         }
 
         fun unpauseMic() {
+            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
             voskSpeechRecognizer.pause(false)
         }
 

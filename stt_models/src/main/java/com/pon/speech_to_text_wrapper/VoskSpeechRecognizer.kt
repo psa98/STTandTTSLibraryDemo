@@ -150,7 +150,7 @@ internal object VoskSpeechRecognizer : RecognitionListener {
     }
 
     fun release() {
-        if (state == ApiState.CREATED_NOT_READY || state == ApiState.FAILURE) return
+        if (state == ApiState.CREATED_NOT_READY ) return
         stop()
         speechService?.shutdown()
         currentModel?.close()
