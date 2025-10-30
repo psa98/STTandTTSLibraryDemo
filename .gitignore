@@ -16,3 +16,5 @@ local.properties
 
 # Project exclude paths
 /stt_models/build/
+# Project exclude paths
+/speech_to_text/build/
