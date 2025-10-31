@@ -7,16 +7,15 @@ import android.speech.tts.Voice
 import android.util.Log
 import net.gotev.speech.Speech
 import net.gotev.speech.TextToSpeechCallback
-import wrapper.SettingsRepository
+import wrapper.internal.SettingsRepository
 import java.util.Locale
 
 /**
-
 Объект Speaker для работы с синтезом речи (Text-To-Speech,TTS API).
  */
-private const val TAG = "Android TTS"
+private const val TAG = "SpeakerApi"
 @Suppress("unused")
-object Speaker {
+object SpeakerApi {
 
     private val speaker: Speech by lazy { Speech.getInstance() }
     private var speakerAvailable = false
@@ -181,7 +180,7 @@ object Speaker {
     }
 
 
-    private fun Voice.compareTo(v2: Voice): Int {
+    fun Voice.compareTo(v2: Voice): Int {
         return this.toString().compareTo(v2.toString())
     }
 

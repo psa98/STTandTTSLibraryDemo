@@ -43,4 +43,6 @@ android {
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.17.0'
+    androidTestImplementation(libs.androidx.junit)
+    androidTestImplementation(libs.androidx.espresso.core)
 }

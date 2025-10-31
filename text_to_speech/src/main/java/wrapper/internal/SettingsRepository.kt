@@ -1,11 +1,9 @@
-package wrapper
+package wrapper.internal
 
 import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
-
-
 
 @Suppress("unused")
 class SettingsRepository(val context: Application) {

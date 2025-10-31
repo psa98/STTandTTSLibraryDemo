@@ -2,71 +2,123 @@ package com.pon.speech_to_text_wrapper
 
 import android.content.Context
 import com.google.gson.annotations.SerializedName
-import com.pon.speech_to_text_wrapper.VoskSpeechRecognizer.state
+import com.pon.speech_to_text_wrapper.internal.VoskSpeechRecognizer
+import com.pon.speech_to_text_wrapper.internal.VoskSpeechRecognizer.state
 import kotlinx.coroutines.*
 
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+
+
+internal const val MAX_WORDS_STORED = 1000
+
 @Suppress("unused")
 object SttApi {
 
+    private var recognizer: RecognizerAPI = RecognizerAPI
 
-    private var recognizer: Recognizer = Recognizer
-    fun initApi(
-        context: Context,
-        onReady: (recognizer: Recognizer) -> Unit,
-        onError: (e: Exception) -> Unit
-    ) {
-        var api = recognizer
-        if (recognizer.sttInitialized == true) api else {
-            recognizer.init(context.applicationContext, onReady, onError)
-        }
-    }
-
-    fun getRecognizerAsync(context: Context):Deferred<Recognizer> {
-        val deferred = CompletableDeferred<Recognizer>()
+    /**
+     * Асинхронно возвращает объект распознавателя речи.
+     * Инициализация происходит только если распознаватель еще не был инициализирован.
+     *
+     * @param context контекст Android приложения
+     * @return Deferred с объектом RecognizerAPI
+     *
+     * пример использования:
+     *
+     *
+     *            CoroutineScope(Dispatchers.IO).launch {
+     *              try {
+     *                      //сохраняем объект API для использования
+     *                     recognizerApi = SttApi.getRecognizerAsync(context).await()
+     *                     mainScope.launch {
+     *                         recognizerApi?.allWords?.collect {
+     *                             // обработка поступающих слов
+     *                         }
+     *                     }
+     *                 } catch (e: Exception) {
+     *                     //обработка ошибки
+     *                 }
+     *             }
+     *
+     */
+    fun getRecognizerAsync(context: Context): Deferred<RecognizerAPI> {
+        val deferred = CompletableDeferred<RecognizerAPI>()
         CoroutineScope(Dispatchers.IO).launch {
             if (recognizer.sttInitialized) {
                 deferred.complete(recognizer)
             } else
-            initApi(context,
-                onReady = { recognizer->
-                    deferred.complete(recognizer)
-                    recognizer.sttInitialized = true
-                },
-                onError = {deferred.completeExceptionally(it)})
-         }
+                recognizer.init(
+                    context,
+                    onReady = { recognizer ->
+                        recognizer.sttInitialized = true
+                        deferred.complete(recognizer)
+                    },
+                    onError = {
+                        recognizer.sttInitialized = false
+                        deferred.completeExceptionally(it)
+                    })
+        }
         return deferred
-
     }
 
+    /**
+     * Состояния API распознавания речи.
+     */
     enum class ApiState {
-        CREATED_NOT_READY, INITIALISED_READY, WORKING_MIC, FINISHED_AND_READY
+        CREATED_NOT_READY,   // Создано, но не готово
+        INITIALISED_READY,   // Инициализировано и готово
+        WORKING_MIC,         // Работает с микрофоном
+        FINISHED_AND_READY   // Завершило работу и готово к началу
     }
 
-    object Recognizer {
-        var sttInitialized = false
+    object RecognizerAPI {
+        internal var sttInitialized = false
         private val voskSpeechRecognizer: VoskSpeechRecognizer = VoskSpeechRecognizer
+
+        /**
+         * Флоу с последними распознанными словами. Слова поступают в поток после завершения предложения -
+         * после паузы в речи).
+         */
         val lastWords: StateFlow<String> = voskSpeechRecognizer.lastWords.asStateFlow()
+
+        /**
+         * Флоу с последними распознанными словами. Строка состоит из всех слов распознанных в текущем
+         * сеансе, с момента инициализации API. Новые слова поступают в поток после завершения предложения
+         * и присоединяются в конец строки. Длина строки ограничена тысячей последних распознанных слов,
+         * параметр MAX_WORDS_STORED.
+         * Может использоваться для разбора длинных приложений и текстов
+         */
         val allWords: StateFlow<String> =
             voskSpeechRecognizer.allWords.asStateFlow()
+
+        /**
+         * Флоу с частичными результатами распознавания. Слова поступают в поток по мере распознавания,
+         * до завершения приложения.
+         */
         val partialWords: StateFlow<String> =
             voskSpeechRecognizer.partialResult.asStateFlow()
-        val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()
 
+        /**
+         * Флоу  с текущим состоянием API распознавания.
+         *  CREATED_NOT_READY,   // Создано, но не готово
+         *  INITIALISED_READY,   // Инициализировано и готово
+         *  WORKING_MIC,         // Работает с микрофоном
+         *  FINISHED_AND_READY   // Завершило работу и готово к началу
+         */
+        val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()
 
 
         internal fun init(
             context: Context,
-            onReady: (Recognizer) -> Unit,
+            onReady: (RecognizerAPI) -> Unit,
             onError: (Exception) -> Unit
         ) {
             voskSpeechRecognizer.prepare(
-                appContext = context,
+                appContext = context.applicationContext,
                 onVoskReady = {
                     onReady.invoke(this)
                     sttInitialized = true
-
                 },
                 onInitError = { e: Exception ->
                     e.printStackTrace()
@@ -76,44 +128,67 @@ object SttApi {
             )
         }
 
+        /**
+         * Запускает распознавание с микрофона.
+         *
+         * @param onError при указании лямбды  она вызывается при ошибке старта распознавания
+         * @throws IllegalStateException если API не инициализировано
+         */
         fun startMic(onError: (Exception) -> Unit = {}) {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.recognizeMic(onError)
         }
-
+        /**
+         * Останавливает распознавание с микрофона.
+         *
+         * @throws IllegalStateException если API не инициализировано
+         */
         fun stopMic() {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.stop()
         }
-
+        /**
+         * Ставит распознавание с микрофона на паузу, если в данный момент идет распознавание с микрофона.
+         *
+         * @throws IllegalStateException если API не инициализировано
+         */
         fun pauseMic() {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.pause(true)
         }
-
+        /**
+         * Снимает паузу с процессса распознавания с микрофона, если оно в данный момент временно приостановлено
+          *
+         * @throws IllegalStateException если API не инициализировано
+         */
         fun unpauseMic() {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.pause(false)
         }
-
+        /**
+         * Останавливает распознавание, освобождает ресурсы моделей распознавания речи.
+         * Последущий вызов других методов API до его повторной инициализации через
+         * getRecognizerAsync(...) будет вызывать исключение
+         */
         fun releaseModels() {
             voskSpeechRecognizer.release()
             sttInitialized = false
         }
 
+        /**
+         * Проверка возможности вызова в данный момент метода startMic(...)
+         */
         val sttReadyToStart: Boolean
             get() = state == ApiState.FINISHED_AND_READY || state == ApiState.INITIALISED_READY
 
+        /**
+         * Проверка, работает ли в данный  момент распознавание с микрофона.
+         */
         val sttWorking: Boolean
             get() = state == ApiState.WORKING_MIC
     }
 
-    class SentenceResult {
-        override fun toString(): String {
-            return "Sentence result" + result.joinToString(
-                separator = " ",
-                transform = { """${it.word} ${it.conf}""" }) + "Text =" + text
-        }
+    internal class SentenceResult {
 
         @SerializedName("result")
         var result: List<WordResult> = emptyList()
@@ -122,7 +197,7 @@ object SttApi {
         var text: String = ""
     }
 
-    class WordResult {
+    internal class WordResult {
         @SerializedName("conf")
         var conf = 0.0
 
@@ -136,10 +211,8 @@ object SttApi {
         var word: String = ""
     }
 
-    class PartialResult {
+    internal class PartialResult {
         @SerializedName("partial")
         var partial = ""
-
-
     }
 }
