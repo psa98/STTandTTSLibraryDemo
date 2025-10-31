@@ -1,10 +1,9 @@
 package com.pon.speech_to_text_wrapper
 
-import android.app.Application
 import android.content.Context
 import com.google.gson.Gson
-import com.pon.speech_to_text_wrapper.Api.ApiState
-import com.pon.speech_to_text_wrapper.Api.SentenceResult
+import com.pon.speech_to_text_wrapper.SttApi.ApiState
+import com.pon.speech_to_text_wrapper.SttApi.SentenceResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import org.vosk.LibVosk
 import org.vosk.LogLevel
@@ -19,7 +18,6 @@ private const val MAX_WORDS_STORED = 1000
 
 internal object VoskSpeechRecognizer : RecognitionListener {
     var rec: Recognizer? = null
-    var settings: SettingsRepository? = null
     private var currentModel: Model? = null
     private var speechService: SpeechService? = null
     var state = ApiState.CREATED_NOT_READY
@@ -32,7 +30,6 @@ internal object VoskSpeechRecognizer : RecognitionListener {
 
     internal val allWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val lastWords: MutableStateFlow<String> = MutableStateFlow("")
-    internal val lastWordsResult: MutableStateFlow<SentenceResult?> = MutableStateFlow(null)
     internal val partialResult: MutableStateFlow<String> = MutableStateFlow("")
     internal val apiState: MutableStateFlow<ApiState> = MutableStateFlow(ApiState.CREATED_NOT_READY)
     var seanceString = ""
@@ -48,13 +45,13 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         onVoskReady: () -> Unit,
         onInitError: (e: Exception) -> Unit,
     ) {
-        settings = SettingsRepository(appContext.applicationContext as Application)
         LibVosk.setLogLevel(LogLevel.WARNINGS)
         StorageService.unpack(
             appContext, "model-ru-ru", "model",
             { model ->
                 currentModel = model
                 state = ApiState.INITIALISED_READY
+
                 onVoskReady()
             }
         ) { exception ->
@@ -67,35 +64,31 @@ internal object VoskSpeechRecognizer : RecognitionListener {
 
     override fun onResult(hypothesis: String?) {
         if (hypothesis == null || hypothesis.trim().isEmpty()) return
-        val sentenceResult = gson.fromJson(hypothesis, SentenceResult::class.java)
-        val newWordsString = sentenceResult.text
+        val newWordsString = gson.fromJson(hypothesis, SentenceResult::class.java).text
         if (newWordsString.trim().isEmpty()) return
         lastWords.value = newWordsString
         seanceString = "$seanceString $newWordsString"
-        lastWordsResult.value = sentenceResult
+
     }
 
     override fun onFinalResult(hypothesis: String?) {
         state = ApiState.FINISHED_AND_READY
         if (hypothesis == null || hypothesis.trim().isEmpty()) {
             lastWords.value = ""
-            lastWordsResult.value = null
             return
         }
         val sentenceResult = gson.fromJson(hypothesis, SentenceResult::class.java)
         val newWordsString = sentenceResult.text
         if (newWordsString.trim().isEmpty()) {
             lastWords.value = ""
-            lastWordsResult.value = sentenceResult
-            return
+             return
         }
         lastWords.value = newWordsString
-        lastWordsResult.value = sentenceResult
     }
 
 
     override fun onPartialResult(hypothesis: String) {
-        val result = gson.fromJson(hypothesis, Api.PartialResult::class.java).partial
+        val result = gson.fromJson(hypothesis, SttApi.PartialResult::class.java).partial
         if (result.isEmpty()) return
         partialResult.value = result
     }
@@ -118,13 +111,12 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         if ((state == ApiState.INITIALISED_READY || state == ApiState.FINISHED_AND_READY) && currentModel != null) {
             try {
                 callOnInitError = onInitError
-                val sampleRate = settings?.voskMicSampleRate ?: 16000f
+                val sampleRate = 16000f
                 rec = Recognizer(currentModel, sampleRate)
                 speechService = SpeechService(rec, sampleRate)
                 speechService?.startListening(this)
                 partialResult.value = ""
                 lastWords.value = ""
-                lastWordsResult.value = null
                 state = ApiState.WORKING_MIC
             } catch (e: Exception) {
                 onInitError(e)

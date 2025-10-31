@@ -3,10 +3,12 @@ package com.pon.speech_to_text_wrapper
 import android.content.Context
 import com.google.gson.annotations.SerializedName
 import com.pon.speech_to_text_wrapper.VoskSpeechRecognizer.state
+import kotlinx.coroutines.*
+
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-
-class Api () {
+@Suppress("unused")
+object SttApi {
 
 
     private var recognizer: Recognizer = Recognizer
@@ -16,9 +18,25 @@ class Api () {
         onError: (e: Exception) -> Unit
     ) {
         var api = recognizer
-        if (recognizer.sttInitialized==true) api else {
-            recognizer.init(context.applicationContext,onReady, onError)
+        if (recognizer.sttInitialized == true) api else {
+            recognizer.init(context.applicationContext, onReady, onError)
         }
+    }
+
+    fun getRecognizerAsync(context: Context):Deferred<Recognizer> {
+        val deferred = CompletableDeferred<Recognizer>()
+        CoroutineScope(Dispatchers.IO).launch {
+            if (recognizer.sttInitialized) {
+                deferred.complete(recognizer)
+            } else
+            initApi(context,
+                onReady = { recognizer->
+                    deferred.complete(recognizer)
+                    recognizer.sttInitialized = true
+                },
+                onError = {deferred.completeExceptionally(it)})
+         }
+        return deferred
 
     }
 
@@ -36,7 +54,13 @@ class Api () {
             voskSpeechRecognizer.partialResult.asStateFlow()
         val apiState: StateFlow<ApiState> = voskSpeechRecognizer.apiState.asStateFlow()
 
-        internal fun init(context: Context, onReady: (Recognizer) -> Unit, onError: (Exception) -> Unit) {
+
+
+        internal fun init(
+            context: Context,
+            onReady: (Recognizer) -> Unit,
+            onError: (Exception) -> Unit
+        ) {
             voskSpeechRecognizer.prepare(
                 appContext = context,
                 onVoskReady = {
@@ -53,22 +77,22 @@ class Api () {
         }
 
         fun startMic(onError: (Exception) -> Unit = {}) {
-            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
+            if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.recognizeMic(onError)
         }
 
         fun stopMic() {
-            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
+            if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.stop()
         }
 
         fun pauseMic() {
-            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
+            if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.pause(true)
         }
 
         fun unpauseMic() {
-            if (!sttInitialized) throw IllegalStateException ("API не инициализировано")
+            if (!sttInitialized) throw IllegalStateException("API не инициализировано")
             voskSpeechRecognizer.pause(false)
         }
 
@@ -86,11 +110,9 @@ class Api () {
 
     class SentenceResult {
         override fun toString(): String {
-            val s = arrayOf("Sentence result")
-            result.listIterator().forEachRemaining { x: WordResult ->
-                s[0] = """${s[0]}${x.word} ${x.conf}"""
-            }
-            return s[0] + "Text =" + text
+            return "Sentence result" + result.joinToString(
+                separator = " ",
+                transform = { """${it.word} ${it.conf}""" }) + "Text =" + text
         }
 
         @SerializedName("result")

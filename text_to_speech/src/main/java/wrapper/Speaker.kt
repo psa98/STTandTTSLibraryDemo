@@ -1,5 +1,6 @@
 package c.ponom.swenska.tts
 
+import android.app.Application
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import android.speech.tts.Voice
@@ -11,10 +12,10 @@ import java.util.Locale
 
 /**
 
-Объект Speaker для работы с синтезом речи (Text-To-Speech).
+Объект Speaker для работы с синтезом речи (Text-To-Speech,TTS API).
  */
 private const val TAG = "Android TTS"
-
+@Suppress("unused")
 object Speaker {
 
     private val speaker: Speech by lazy { Speech.getInstance() }
@@ -29,7 +30,7 @@ object Speaker {
      */
     fun isAvailable() = speakerAvailable
 
-    private val settings: SettingsRepository? = null
+    private var settings: SettingsRepository? = null
     private var readyCallback: (result: Boolean) -> Unit = {}
 
     /**
@@ -67,6 +68,7 @@ object Speaker {
     fun prepare(context: Context, onReadyCallback: (result: Boolean) -> Unit = {}) {
         if (!speakerAvailable) {
             Speech.init(context, ttsInitListener)
+            settings = SettingsRepository(context.applicationContext as Application)
             readyCallback = onReadyCallback
         } else onReadyCallback.invoke(true)
     }

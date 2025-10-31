@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.material3.Button
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
@@ -30,15 +29,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import c.ponom.swenska.tts.Speaker
-import com.pon.speech_to_text_wrapper.Api
-import com.pon.speech_to_text_wrapper.Api.ApiState.WORKING_MIC
+import com.pon.speech_to_text_wrapper.SttApi
+import com.pon.speech_to_text_wrapper.SttApi.ApiState.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 class TestActivity() : ComponentActivity() {
 
-    private var recognizerApi: Api.Recognizer? = null
+    private var recognizerApi: SttApi.Recognizer? = null
     var speakApi: Speaker = Speaker
     private val mainScope = CoroutineScope(Dispatchers.Main)
 
@@ -50,7 +49,7 @@ class TestActivity() : ComponentActivity() {
     @Composable
     private fun MainScreen() {
         val context = LocalContext.current
-        val snackbarHostState = SnackbarHostState()
+        var apiState by remember { mutableStateOf(SttApi.ApiState.CREATED_NOT_READY) }
         var recordButtonEnabled by remember { mutableStateOf(false) }
         var recordButtonText by remember { mutableStateOf("Подготовка оборудования") }
         var permissionsButtonEnabled by remember { mutableStateOf(false) }
@@ -71,42 +70,93 @@ class TestActivity() : ComponentActivity() {
             } else {
                 recordButtonEnabled = false
                 recordButtonText = "Разрешение для микрофона не получено"
-                mainScope.launch {
-                    snackbarHostState.showSnackbar("Требуется предоставить разрешение")
-                }
             }
         }
 
         LaunchedEffect(Unit) {
             CoroutineScope(Dispatchers.IO).launch {
-                Api().initApi(
-                    context = context,
-                    onReady = { recognizer ->
-                        recognizerApi = recognizer
-                        recordButtonEnabled = true
-                        recordButtonText = "Начать распознавание"
-                        mainScope.launch {
-                            recognizer.allWords.collect {
-                                currentText = it.toString()
-                            }
+                try {
+                    val recognizer = SttApi.getRecognizerAsync(context).await()
+                    recognizerApi = recognizer
+                    recordButtonEnabled = true
+                    recordButtonText = "Начать распознавание"
+                    mainScope.launch {
+                        recognizer.allWords.collect {
+                            currentText = it.toString()
                         }
-                        mainScope.launch {
-                            recognizer.partialWords.collect {
-                                partialText = it.toString()
-                            }
-                        }
-                        mainScope.launch {
-                            recognizer.apiState.collect {
-                                textState = it.toString()
-                            }
-                        }
-                    },
-                    onError = { exception ->
-                        recordButtonText = "Не удалось инициализировать API"
-                        recordButtonEnabled = false
                     }
-                )
+                    mainScope.launch {
+                        recognizer.partialWords.collect {
+                            partialText = it.toString()
+                        }
+                    }
+                    mainScope.launch {
+                        recognizer.apiState.collect {
+                            textState = it.toString()
+                            apiState = it
+                            when (apiState) {
+                                CREATED_NOT_READY -> {
+                                    recordButtonText = "Идет подготовка оборудования"
+                                    recordButtonEnabled = false
+                                }
+
+                                INITIALISED_READY -> {
+                                    recordButtonText = "Начать распознавание"
+                                    recordButtonEnabled = true
+
+                                }
+
+                                WORKING_MIC -> {
+                                    recordButtonText = "Остановить запись"
+                                    recordButtonEnabled = true
+
+                                }
+
+                                FINISHED_AND_READY -> {
+                                    recordButtonText = "Начать распознавание"
+                                    recordButtonEnabled = true
+                                }
+                            }
+                        }
+                    }
+
+                } catch (_: Exception) {
+                    recordButtonText = "Не удалось инициализировать API"
+                    recordButtonEnabled = false
+                }
             }
+            /* альтернативный вариант получения доступа к Recognizer классу STT API
+                       CoroutineScope(Dispatchers.IO).launch {
+                           SttApi.initApi(
+                               context = context,
+                               onReady = { recognizer ->
+                                   recognizerApi = recognizer
+                                   recordButtonEnabled = true
+                                   recordButtonText = "Начать распознавание"
+                                   mainScope.launch {
+                                       recognizer.allWords.collect {
+                                           currentText = it.toString()
+                                       }
+                                   }
+                                   mainScope.launch {
+                                       recognizer.partialWords.collect {
+                                           partialText = it.toString()
+                                       }
+                                   }
+                                   mainScope.launch {
+                                       recognizer.apiState.collect {
+                                           textState = it.toString()
+                                       }
+                                   }
+                               },
+                               onError = { exception ->
+                                   recordButtonText = "Не удалось инициализировать API"
+                                   recordButtonEnabled = false
+                               }
+                           )
+                       }
+            */
+
             speakApi.prepare(context) { success ->
                 if (success) {
                     sayWordButtonEnabled = true
@@ -136,7 +186,8 @@ class TestActivity() : ComponentActivity() {
                 .fillMaxSize()
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        )
+        {
             Button(
                 onClick = {
                     launcher.launch(android.Manifest.permission.RECORD_AUDIO)
@@ -146,7 +197,6 @@ class TestActivity() : ComponentActivity() {
             ) {
                 Text(permissionsButtonText)
             }
-
             TextField(
                 value = "Все распознанные слова:\n$currentText",
                 onValueChange = {},
@@ -154,7 +204,7 @@ class TestActivity() : ComponentActivity() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
-                )
+            )
 
             TextField(
                 value = "Слова по мере распознавания:\n$partialText",
@@ -163,7 +213,7 @@ class TestActivity() : ComponentActivity() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(120.dp),
-                )
+            )
 
             Text(text = textState)
 
@@ -173,12 +223,10 @@ class TestActivity() : ComponentActivity() {
                     if (rec == null) return@Button
                     if (rec.apiState.value == WORKING_MIC) {
                         rec.stopMic()
-                        recordButtonText = "Начать распознавание"
                         return@Button
                     }
                     if (rec.sttReadyToStart == true) {
-                        rec.startMic()
-                        recordButtonText = "Остановить запись"
+                         rec.startMic()
                     }
                 },
                 enabled = recordButtonEnabled,
@@ -194,12 +242,9 @@ class TestActivity() : ComponentActivity() {
                     .fillMaxWidth()
                     .height(60.dp),
                 singleLine = false,
-                enabled = true,
                 readOnly = false,
-                placeholder = null
+                placeholder = {Text(text = "Введите текст для произнесения")}
             )
-
-            Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = {
                     speakApi.speakPhrase(
@@ -209,8 +254,9 @@ class TestActivity() : ComponentActivity() {
                         callbackOnEnd = { recognizerApi?.unpauseMic() })
                 },
                 enabled = sayWordButtonEnabled,
-                modifier = Modifier.wrapContentWidth().align(Alignment.CenterHorizontally)
-
+                modifier = Modifier
+                    .wrapContentWidth()
+                    .align(Alignment.CenterHorizontally)
             ) {
                 Text(text = sayWordButtonText)
             }
@@ -222,21 +268,21 @@ class TestActivity() : ComponentActivity() {
     }
 
 
-    override fun onStop() {
-        super.onStop()
-        recognizerApi?.stopMic()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         recognizerApi?.stopMic()
         recognizerApi?.releaseModels()
+        recognizerApi = null
         speakApi.release()
     }
 
     override fun onPause() {
         super.onPause()
-        recognizerApi?.stopMic()
+        val rec = recognizerApi
+        if (rec == null) return
+        if (rec.apiState.value == WORKING_MIC) {
+            rec.stopMic()
+        }
     }
 
 
