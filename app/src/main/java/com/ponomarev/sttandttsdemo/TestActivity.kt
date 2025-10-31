@@ -77,10 +77,8 @@ class TestActivity() : ComponentActivity() {
                 recordButtonText = "Разрешение для микрофона не получено"
             }
         }
-
         LaunchedEffect(Unit) {
             CoroutineScope(Dispatchers.IO).launch {
-
                 /*
                 возможный вариант без try
                 val result = runCatching { SttApi.getRecognizerAsync(context).await() }
@@ -100,8 +98,6 @@ class TestActivity() : ComponentActivity() {
                     }
                 }
                  */
-
-
                 try {
                     val recognizer = SttApi.getRecognizerAsync(context).await()
                     recognizerApi = recognizer
@@ -136,9 +132,7 @@ class TestActivity() : ComponentActivity() {
                                 WORKING_MIC -> {
                                     recordButtonText = "Остановить запись"
                                     recordButtonEnabled = true
-
                                 }
-
                                 FINISHED_AND_READY -> {
                                     recordButtonText = "Начать распознавание"
                                     recordButtonEnabled = true
@@ -277,12 +271,13 @@ class TestActivity() : ComponentActivity() {
     }
 
     fun setTextToSpeechVoice() {
+        // получаем список голосов русской локали
         var supportedVoices = SpeakerApi.getVoiceList()
             .sortedWith { v1: Voice, v2: Voice -> v1.compareTo(v2) }
             .filter {
-                it.locale.language.startsWith("ru", true) ||
-                        it.locale.language.startsWith("rus", true)
+                it.locale.language.startsWith("ru", true)
             }
+        // нас интересуют голоса не требующие сети
         val offlineVoices = supportedVoices.filter { !it.isNetworkConnectionRequired }
         val currentVoice = SpeakerApi.currentVoice()
         if (supportedVoices.isEmpty() || currentVoice == null) {
@@ -294,6 +289,7 @@ class TestActivity() : ComponentActivity() {
             return
         }
         val currentVoiceName = currentVoice.name
+        // нас интересуют голоса не требующие сети (но если других русских нет и такие пойдут)
         if (offlineVoices.isNotEmpty()) supportedVoices = offlineVoices
         val voicesArray = arrayOfNulls<CharSequence>(supportedVoices.size)
         supportedVoices.forEachIndexed { index: Int, v: Voice ->
@@ -310,7 +306,11 @@ class TestActivity() : ComponentActivity() {
             .show()
     }
 
-
+    /**
+     * Освобождаем все ресурсы и много памяти при уничтожении активити
+     * Повторное подключение к Api распознавания потребует нового вызова
+     * SttApi.getRecognizerAsync(...)
+     */
     override fun onDestroy() {
         super.onDestroy()
         runCatching {
@@ -321,6 +321,10 @@ class TestActivity() : ComponentActivity() {
         speakApi.release()
     }
 
+    /**
+     * при переключении из приложения останавливаем распознавание - все равно у приложения не во
+     * фронте доступ к микрофону блокируется, если нет форграунд сервиса
+     */
     override fun onPause() {
         super.onPause()
         val rec = recognizerApi
