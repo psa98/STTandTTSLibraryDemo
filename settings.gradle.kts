@@ -21,8 +21,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "STT and TTS demo"
 include(":app")
-include (":stt_models")
 include (":text_to_speech")
+include (":speech_to_text")
 
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)

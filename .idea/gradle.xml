@@ -11,7 +11,7 @@
           <set>
             <option value="$PROJECT_DIR$" />
             <option value="$PROJECT_DIR$/app" />
-            <option value="$PROJECT_DIR$/stt_models" />
+            <option value="$PROJECT_DIR$/speech_to_text" />
             <option value="$PROJECT_DIR$/text_to_speech" />
           </set>
         </option>
