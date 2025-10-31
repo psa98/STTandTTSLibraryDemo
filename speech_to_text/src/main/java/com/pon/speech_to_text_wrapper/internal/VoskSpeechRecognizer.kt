@@ -25,7 +25,6 @@ internal object VoskSpeechRecognizer : RecognitionListener {
         }
     private val gson = Gson()
     private var callOnInitError: (Exception) -> Unit = {}
-
     internal val allWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val lastWords: MutableStateFlow<String> = MutableStateFlow("")
     internal val partialResult: MutableStateFlow<String> = MutableStateFlow("")

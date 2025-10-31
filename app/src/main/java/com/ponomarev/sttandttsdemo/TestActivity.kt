@@ -37,6 +37,7 @@ import com.pon.speech_to_text_wrapper.SttApi
 import com.pon.speech_to_text_wrapper.SttApi.ApiState.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import java.util.Locale
 import kotlin.collections.get
@@ -45,7 +46,6 @@ class TestActivity() : ComponentActivity() {
 
     private var recognizerApi: SttApi.RecognizerAPI? = null
     private var speakApi: SpeakerApi = SpeakerApi
-    private val mainScope = CoroutineScope(Dispatchers.Main)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,101 +77,6 @@ class TestActivity() : ComponentActivity() {
                 recordButtonText = "Разрешение для микрофона не получено"
             }
         }
-        LaunchedEffect(Unit) {
-            CoroutineScope(Dispatchers.IO).launch {
-                /*
-                возможный вариант без try
-                val result = runCatching { SttApi.getRecognizerAsync(context).await() }
-                result.onFailure {
-                    it.printStackTrace()
-                    recordButtonText = "Не удалось инициализировать API"
-                    recordButtonEnabled = false
-                }
-                result.onSuccess {
-                    recognizerApi= it
-                    recordButtonEnabled = true
-                    recordButtonText = "Начать распознавание"
-                    mainScope.launch {
-                        it.allWords.collect {
-                            currentText = it.toString()
-                        }
-                    }
-                }
-                 */
-                try {
-                    val recognizer = SttApi.getRecognizerAsync(context).await()
-                    recognizerApi = recognizer
-                    recordButtonEnabled = true
-                    recordButtonText = "Начать распознавание"
-                    mainScope.launch {
-                        recognizer.allWords.collect {
-                            currentText = it.toString()
-                        }
-                    }
-                    mainScope.launch {
-                        recognizer.partialWords.collect {
-                            partialText = it.toString()
-                        }
-                    }
-                    mainScope.launch {
-                        recognizer.apiState.collect {
-                            textState = it.toString()
-                            apiState = it
-                            when (apiState) {
-                                CREATED_NOT_READY -> {
-                                    recordButtonText = "Идет подготовка оборудования"
-                                    recordButtonEnabled = false
-                                }
-
-                                INITIALISED_READY -> {
-                                    recordButtonText = "Начать распознавание"
-                                    recordButtonEnabled = true
-
-                                }
-
-                                WORKING_MIC -> {
-                                    recordButtonText = "Остановить запись"
-                                    recordButtonEnabled = true
-                                }
-                                FINISHED_AND_READY -> {
-                                    recordButtonText = "Начать распознавание"
-                                    recordButtonEnabled = true
-                                }
-                            }
-                        }
-                    }
-
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                    recordButtonText = "Не удалось инициализировать API"
-                    recordButtonEnabled = false
-                }
-            }
-
-            speakApi.prepare(context) { success ->
-                if (success) {
-                    sayWordButtonEnabled = true
-                    textToSpeak = "Проверка голоса"
-                    sayWordButtonText = "Произнести фразу"
-                } else {
-                    sayWordButtonEnabled = false
-                    textToSpeak = "Проверка голоса"
-                    sayWordButtonText = "Ошибка API TTS"
-                }
-            }
-            if (!hasPermissions(context)) {
-                permissionsButtonEnabled = true
-                permissionsButtonText = "Нажмите для получения разрешения"
-                recordButtonEnabled = false
-                recordButtonText = "Разрешение для микрофона не получено"
-            } else {
-                permissionsButtonEnabled = false
-                permissionsButtonText = "Разрешение на доступ к микрофону предоставлено"
-                recordButtonEnabled = false
-                recordButtonText = "Подготовка оборудования"
-            }
-        }
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -263,6 +168,97 @@ class TestActivity() : ComponentActivity() {
             ) {
                 Text(text = "Выбор голоса")
             }
+            LaunchedEffect(Unit) {
+                if (!hasPermissions(context)) {
+                    permissionsButtonEnabled = true
+                    permissionsButtonText = "Нажмите для получения разрешения"
+                    recordButtonEnabled = false
+                    recordButtonText = "Разрешение для микрофона не получено"
+                } else {
+                    permissionsButtonEnabled = false
+                    permissionsButtonText = "Разрешение на доступ к микрофону предоставлено"
+                    recordButtonEnabled = false
+                    recordButtonText = "Подготовка оборудования"
+                }
+                speakApi.prepare(context) { success ->
+                    if (success) {
+                        sayWordButtonEnabled = true
+                        textToSpeak = "Проверка голоса"
+                        sayWordButtonText = "Произнести фразу"
+                    } else {
+                        sayWordButtonEnabled = false
+                        textToSpeak = "Проверка голоса"
+                        sayWordButtonText = "Ошибка API TTS"
+                    }
+                }
+                /*
+                возможный вариант без try
+                val result = runCatching { SttApi.getRecognizerAsync(context).await() }
+                result.onFailure {
+                    it.printStackTrace()
+                    recordButtonText = "Не удалось инициализировать API"
+                    recordButtonEnabled = false
+                }
+                result.onSuccess {
+                    recognizerApi= it
+                    recordButtonEnabled = true
+                    recordButtonText = "Начать распознавание"
+                    mainScope.launch {
+                        it.allWords.collect {
+                            currentText = it.toString()
+                        }
+                    }
+                }
+                 */
+                try {
+                    val recognizer = SttApi.getRecognizerAsync(context).await()
+                    recognizerApi = recognizer
+                    recordButtonEnabled = true
+                    recordButtonText = "Начать распознавание"
+                    launch {
+                        recognizer.allWords.collect {
+                            currentText = it.toString()
+                        }
+                    }
+                    launch {
+                        recognizer.partialWords.collect {
+                            partialText = it.toString()
+                        }
+                    }
+                    launch {
+                        recognizer.apiState.collect {
+                            textState = it.toString()
+                            apiState = it
+                            when (apiState) {
+                                CREATED_NOT_READY -> {
+                                    recordButtonText = "Идет подготовка оборудования"
+                                    recordButtonEnabled = false
+                                }
+
+                                INITIALISED_READY -> {
+                                    recordButtonText = "Начать распознавание"
+                                    recordButtonEnabled = true
+
+                                }
+
+                                WORKING_MIC -> {
+                                    recordButtonText = "Остановить запись"
+                                    recordButtonEnabled = true
+                                }
+
+                                FINISHED_AND_READY -> {
+                                    recordButtonText = "Начать распознавание"
+                                    recordButtonEnabled = true
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                    recordButtonText = "Не удалось инициализировать API"
+                    recordButtonEnabled = false
+                }
+            }
         }
     }
 
@@ -293,7 +289,7 @@ class TestActivity() : ComponentActivity() {
         if (offlineVoices.isNotEmpty()) supportedVoices = offlineVoices
         val voicesArray = arrayOfNulls<CharSequence>(supportedVoices.size)
         supportedVoices.forEachIndexed { index: Int, v: Voice ->
-            voicesArray[index] = "Голос ${index+1} ${v.name} "
+            voicesArray[index] = "Голос ${index + 1} ${v.name} "
         }
         AlertDialog.Builder(this)
             .setTitle("Текущий голос: $currentVoiceName")

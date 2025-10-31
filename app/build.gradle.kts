@@ -12,7 +12,7 @@ android {
     defaultConfig {
         applicationId = "com.ponomarev.sttandttsdemo"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
 
@@ -26,6 +26,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
     compileOptions {
@@ -49,6 +50,7 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation (libs.androidx.material3)
     implementation (libs.androidx.material)
+    implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)

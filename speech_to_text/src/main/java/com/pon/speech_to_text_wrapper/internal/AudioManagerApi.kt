@@ -10,7 +10,7 @@ import android.content.IntentFilter
 import android.media.AudioManager
 import android.os.Build
 
-
+@Suppress("DEPRECATION")
 class AudioManagerApi(val applicationContext: Application) {
     val am: AudioManager = applicationContext.getSystemService(AUDIO_SERVICE) as AudioManager
     private val receiver = BlueToothSCOConnectionReceiver().also { it.am = am }
@@ -31,11 +31,12 @@ class AudioManagerApi(val applicationContext: Application) {
 
     /**
      * останов бродкаст ресивера, отслеживающего подключение и отключение аудио блютуз устройств
-     * Вызывается при очистке и освобождении реурсов  Api STT
+     * Вызывается при очистке и освобождении реcурсов  Api STT
      */
     fun stopReceiver(){
         applicationContext.unregisterReceiver(receiver)
     }
+
 
     fun scoState() = am.isBluetoothScoOn
 
@@ -44,7 +45,6 @@ class AudioManagerApi(val applicationContext: Application) {
      * в режим работы приложения с его микрофоном. Вывод звука по умолчанию на это устройство включается
      * автоматически
      */
-    @Suppress("DEPRECATION")
     fun turnScoOn() {
         // Метод задепрекейчен, но рекомендованный новый что то не заработал, смотри вариант кода ниже.
         // Возможно метод перестанет работать на sdk 35 или 36, тогда надо будет решать эту проблему
