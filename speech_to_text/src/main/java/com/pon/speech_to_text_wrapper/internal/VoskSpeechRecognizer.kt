@@ -131,7 +131,10 @@ internal object VoskSpeechRecognizer : RecognitionListener {
 
     fun stop() {
         if (state == SttApi.ApiState.WORKING_MIC) speechService?.stop()
+        speechService?.shutdown()
+        speechService = null
         rec?.close()
+        rec = null
         state = SttApi.ApiState.FINISHED_AND_READY
     }
 

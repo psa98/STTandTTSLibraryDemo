@@ -11,6 +11,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -18,6 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -26,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -66,8 +70,11 @@ class TestActivity() : ComponentActivity() {
         var textToSpeak by remember { mutableStateOf("Введите сюда текст для произношения") }
         var sayWordButtonText by remember { mutableStateOf("Подготовка оборудования") }
         var sayWordButtonEnabled by remember { mutableStateOf(false) }
+        var scroll = rememberScrollState()
+        var permissions by rememberSaveable { mutableStateOf(hasPermissions(context)) }
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission()
+
         ) { isGranted: Boolean ->
             if (isGranted) {
                 recordButtonEnabled = true
@@ -77,8 +84,10 @@ class TestActivity() : ComponentActivity() {
                 recordButtonText = "Разрешение для микрофона не получено"
             }
         }
+
         Column(
             modifier = Modifier
+                .verticalScroll(scroll)
                 .fillMaxSize()
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -168,7 +177,7 @@ class TestActivity() : ComponentActivity() {
             ) {
                 Text(text = "Выбор голоса")
             }
-            LaunchedEffect(Unit) {
+            LaunchedEffect(permissions) {
                 if (!hasPermissions(context)) {
                     permissionsButtonEnabled = true
                     permissionsButtonText = "Нажмите для получения разрешения"

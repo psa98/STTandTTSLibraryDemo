@@ -138,6 +138,7 @@ object SttApi {
          */
         fun startMic(onError: (Exception) -> Unit = {}) {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
+            audioManager?.turnScoOn()
             voskSpeechRecognizer.recognizeMic(onError)
         }
         /**
@@ -147,6 +148,7 @@ object SttApi {
          */
         fun stopMic() {
             if (!sttInitialized) throw IllegalStateException("API не инициализировано")
+            audioManager?.turnScoOff()
             voskSpeechRecognizer.stop()
         }
         /**
