@@ -4,6 +4,7 @@ import android.app.Application
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
+import java.util.Locale
 
 @Suppress("unused")
 class SettingsRepository(val context: Application) {
@@ -13,25 +14,19 @@ class SettingsRepository(val context: Application) {
         return sharedPreferences.contains(key)
     }
 
-    private val sharedPreferences: SharedPreferences = context.getSharedPreferences(
+    val sharedPreferences: SharedPreferences = context.getSharedPreferences(
         "default_tts_settings",
         Context.MODE_PRIVATE
     )
 
-    var newVoiceSelectedPhrase = sharedPreferences.getString("VOICE_CHANGED_STRING","Голос изменен")!!
-        set(value) {
-            field = value
-            sharedPreferences.edit { putString("SAMPLE_RATE", value) }
-        }
 
-
-    fun saveDefaultVoice(name: String) {
-        sharedPreferences.edit { putString("VOICE", name) }
+    fun saveDefaultVoice(name: String, locale: Locale = Locale.getDefault()) {
+        sharedPreferences.edit { putString("VOICE_${locale.language}", name) }
     }
 
 
-    fun getSavedVoice(): String {
-        return sharedPreferences.getString("VOICE", "") ?: ""
+    fun getSavedVoice(locale: Locale = Locale.getDefault()): String {
+        return sharedPreferences.getString("VOICE_${locale.language}", "") ?: ""
     }
 
     fun setSpeed(speed: Float) {

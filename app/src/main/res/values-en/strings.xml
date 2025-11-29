@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="check_voice">Voice check</string>
+    <string name="voice_selection">Select voice</string>
+    <string name="no_voicepacks">No voice packs available </string>
+    <string name="voice">"Voice %1$s %2$s "</string>
+    <string name="voice_new_selected">New voice selected</string>
+</resources>

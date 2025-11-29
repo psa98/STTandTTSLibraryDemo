@@ -2,6 +2,7 @@ package com.ponomarev.sttandttsdemo
 
 
 import android.content.Context
+import android.content.SharedPreferences
 import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.os.Bundle
 import android.speech.tts.Voice
@@ -34,7 +35,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import c.ponom.swenska.tts.SpeakerApi
 import c.ponom.swenska.tts.SpeakerApi.compareTo
 import com.pon.speech_to_text_wrapper.SttApi
@@ -189,14 +192,28 @@ class TestActivity() : ComponentActivity() {
                     recordButtonEnabled = false
                     recordButtonText = "Подготовка оборудования"
                 }
+
+                // миграция со старого способа хранения текущего голоса, без локали.
+                // требуется только для этого приложения
+                val sharedPreferences: SharedPreferences = context.getSharedPreferences(
+                    "default_tts_settings",
+                    MODE_PRIVATE
+                )
+                val oldRuVoice = sharedPreferences.getString("VOICE","")!!
+
+                if (oldRuVoice.isNotEmpty()) {
+                    sharedPreferences.edit(true) { putString("VOICE_ru", oldRuVoice)
+                    sharedPreferences.edit(){remove("VOICE")}
+                    }
+                }
                 speakApi.prepare(context) { success ->
                     if (success) {
                         sayWordButtonEnabled = true
-                        textToSpeak = "Проверка голоса"
+                        textToSpeak = getString(R.string.check_voice)
                         sayWordButtonText = "Произнести фразу"
                     } else {
                         sayWordButtonEnabled = false
-                        textToSpeak = "Проверка голоса"
+                        textToSpeak =  getString(R.string.check_voice)
                         sayWordButtonText = "Ошибка API TTS"
                     }
                 }
@@ -276,37 +293,38 @@ class TestActivity() : ComponentActivity() {
     }
 
     fun setTextToSpeechVoice() {
-        // получаем список голосов русской локали
+        // получаем список голосов текущей локали
+        val locale = Locale.getDefault()
         var supportedVoices = SpeakerApi.getVoiceList()
             .sortedWith { v1: Voice, v2: Voice -> v1.compareTo(v2) }
             .filter {
-                it.locale.language.startsWith("ru", true)
+                it.locale.language.startsWith(locale.language, true)
             }
         // нас интересуют голоса не требующие сети
         val offlineVoices = supportedVoices.filter { !it.isNetworkConnectionRequired }
         val currentVoice = SpeakerApi.currentVoice()
         if (supportedVoices.isEmpty() || currentVoice == null) {
             AlertDialog.Builder(this)
-                .setTitle("Выбор голоса")
-                .setMessage("Нет установленных голосов для русского языка")
-                .setPositiveButton("OK", null)
+                .setTitle(getString(R.string.voice_selection))
+                .setMessage(getString(R.string.no_voicepacks))
+                .setPositiveButton(android.R.string.ok, null)
                 .show()
             return
         }
         val currentVoiceName = currentVoice.name
-        // нас интересуют голоса не требующие сети (но если других русских нет и такие пойдут)
+        // нас интересуют голоса не требующие сети (но если других нет и такие пойдут)
         if (offlineVoices.isNotEmpty()) supportedVoices = offlineVoices
         val voicesArray = arrayOfNulls<CharSequence>(supportedVoices.size)
         supportedVoices.forEachIndexed { index: Int, v: Voice ->
-            voicesArray[index] = "Голос ${index + 1} ${v.name} "
+            voicesArray[index] = getString(R.string.voice, (index + 1).toString(), v.name)
         }
         AlertDialog.Builder(this)
-            .setTitle("Текущий голос: $currentVoiceName")
+            .setTitle(getString(R.string.voice,currentVoiceName,""))
             .setItems(voicesArray) { _, i ->
                 SpeakerApi.setVoice(supportedVoices[i])
-                SpeakerApi.speakPhrase("Выбран новый голос")
+                SpeakerApi.speakPhrase(getString(R.string.voice_new_selected))
             }
-            .setPositiveButton("Отмена", null)
+            .setPositiveButton(android.R.string.cancel, null)
             .create()
             .show()
     }

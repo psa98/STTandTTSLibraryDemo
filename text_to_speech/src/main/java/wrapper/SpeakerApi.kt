@@ -120,7 +120,6 @@ object SpeakerApi {
                 TextToSpeech.SUCCESS -> {
                     try {
                         @Suppress("DEPRECATION")
-                        speaker.setLocale(Locale("ru", "RU"))
                         Log.i(TAG, "TextToSpeech engine successfully started")
                         val currentVoice = speaker
                             .supportedTextToSpeechVoices

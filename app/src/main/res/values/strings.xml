@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">STT and TTS demo</string>
+    <string name="app_name" translatable="false">STT and TTS demo</string>
+    <string name="check_voice">Проверка голоса</string>
+    <string name="voice_selection">Выбор голоса</string>
+    <string name="no_voicepacks">Нет установленных голосов для текущего языка</string>
+    <string name="voice">"Голос %1$s %2$s "</string>
+    <string name="voice_new_selected">Выбран новый голос</string>
 </resources>
